@@ -6,4 +6,5 @@
     <string name="crime_title_hint">Enter a title for the crime</string>
     <string name="details">Details</string>
     <string name="solved">Solved</string>
+    <string name="this_crime_is_solved">This crime is solved</string>
 </resources>

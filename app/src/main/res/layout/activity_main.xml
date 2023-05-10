@@ -6,6 +6,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity"
-    tools:layout="@layout/fragment_crime_detail">
+    tools:layout="@layout/fragment_crime_list">
 
 </androidx.fragment.app.FragmentContainerView>
