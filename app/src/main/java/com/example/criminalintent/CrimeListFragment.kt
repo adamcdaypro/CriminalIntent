@@ -6,8 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.criminalintent.databinding.FragmentCrimeListBinding
+import kotlinx.coroutines.launch
 
 class CrimeListFragment : Fragment() {
 
@@ -21,6 +25,7 @@ class CrimeListFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+
         _binding = FragmentCrimeListBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -28,14 +33,23 @@ class CrimeListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.crimesRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context)
-            adapter = CrimeListAdapter(viewModel.crimes)
+        with(viewLifecycleOwner) {
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    with(binding.crimesRecyclerView) {
+                        layoutManager = LinearLayoutManager(context)
+                        viewModel.crimes.collect { crimes ->
+                            adapter = CrimeListAdapter(crimes)
+                        }
+                    }
+                }
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+
         _binding = null
     }
 
