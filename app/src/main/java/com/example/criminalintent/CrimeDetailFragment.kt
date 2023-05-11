@@ -1,18 +1,21 @@
 package com.example.criminalintent
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.widget.doOnTextChanged
+import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.navArgs
 import com.example.criminalintent.databinding.FragmentCrimeDetailBinding
 import com.example.criminalintent.model.Crime
+import kotlinx.coroutines.launch
+import java.text.DateFormat
 import java.util.Date
-import java.util.UUID
-
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
 
 class CrimeDetailFragment : Fragment() {
 
@@ -21,23 +24,17 @@ class CrimeDetailFragment : Fragment() {
         get() = checkNotNull(_binding) {
             "Cannot access binding because it is null. Is the view visible?"
         }
-    private lateinit var crime: Crime
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    private val args: CrimeDetailFragmentArgs by navArgs()
 
-        crime = Crime(
-            id = UUID.fromString("76199a0f-42b6-4f0b-b9c5-04ab06017061"),
-            title = "Crime",
-            date = Date(131313131313),
-            isSolved = false
-        )
+    private val viewModel: CrimeDetailViewModel by viewModels {
+        CrimeDetailViewModelFactory(args.crimeId)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         _binding = FragmentCrimeDetailBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -45,18 +42,12 @@ class CrimeDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.apply {
-            crimeTitle.doOnTextChanged { text, _, _, _ ->
-                crime = crime.copy(title = text.toString())
-            }
-
-            crimeDateButton.apply {
-                text = crime.date.toString()
-                isEnabled = false
-            }
-
-            crimeSolvedCheckBox.setOnCheckedChangeListener { _, isChecked ->
-                crime = crime.copy(isSolved = isChecked)
+        setupViews()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                with(viewModel) {
+                    crime.collect { crime -> updateViews(crime) }
+                }
             }
         }
     }
@@ -66,16 +57,38 @@ class CrimeDetailFragment : Fragment() {
         _binding = null
     }
 
-    companion object {
+    private fun setupViews() {
+        setupTitleTextView()
+        setupCrimeDateButton()
+        setupCrimeSolvedCheckBox()
+    }
 
-        private const val TAG = "CrimeDetailFragment"
+    private fun setupTitleTextView() {
+        binding.crimeTitle.doAfterTextChanged {
+            viewModel.setCrimeTitle(it.toString())
+        }
+    }
 
-        fun newInstance(param1: String, param2: String) =
-            CrimeDetailFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
-            }
+    private fun setupCrimeDateButton() {
+        binding.crimeDateButton.setOnClickListener {
+            viewModel.setCrimeDate(Date())
+        }
+    }
+
+    private fun setupCrimeSolvedCheckBox() {
+        binding.crimeSolvedCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setCrimeSolved(isChecked)
+        }
+    }
+
+    private fun updateViews(crime: Crime?) {
+        if (crime == null) return
+
+        with(binding) {
+            crimeTitle.setText(crime.title)
+            crimeDateButton.text =
+                DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.SHORT).format(crime.date)
+            crimeSolvedCheckBox.isChecked = crime.isSolved
+        }
     }
 }

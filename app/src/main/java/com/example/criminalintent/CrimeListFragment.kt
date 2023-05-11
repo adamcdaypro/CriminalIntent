@@ -9,8 +9,10 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.criminalintent.databinding.FragmentCrimeListBinding
+import com.example.criminalintent.model.Crime
 import kotlinx.coroutines.launch
 
 class CrimeListFragment : Fragment() {
@@ -25,32 +27,33 @@ class CrimeListFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
         _binding = FragmentCrimeListBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        with(viewLifecycleOwner) {
-            lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    with(binding.crimesRecyclerView) {
-                        layoutManager = LinearLayoutManager(context)
-                        viewModel.crimes.collect { crimes ->
-                            adapter = CrimeListAdapter(crimes)
-                        }
-                    }
-                }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.crimes.collect { crimes -> updateViews(crimes) }
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-
         _binding = null
+    }
+
+    private fun updateViews(crimes: List<Crime>) {
+        with(binding.crimesRecyclerView) {
+            layoutManager = LinearLayoutManager(context)
+            adapter = CrimeListAdapter(crimes) { id ->
+                findNavController().navigate(
+                    CrimeListFragmentDirections.showCrimeDetails(id)
+                )
+            }
+        }
     }
 
 }

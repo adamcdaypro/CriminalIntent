@@ -1,8 +1,10 @@
 package com.example.criminalintent.database
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.example.criminalintent.model.Crime
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
@@ -18,5 +20,11 @@ interface CrimeDao {
 
     @Insert
     suspend fun addCrimes(crimes: List<Crime>)
+
+    @Update
+    suspend fun updateCrime(crime: Crime)
+
+    @Delete
+    suspend fun deleteCrimes(crimes: List<Crime>)
 
 }
