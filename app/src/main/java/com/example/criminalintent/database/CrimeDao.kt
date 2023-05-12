@@ -19,12 +19,12 @@ interface CrimeDao {
     fun getCrime(id: UUID): Flow<Crime>
 
     @Insert
-    suspend fun addCrimes(crimes: List<Crime>)
+    suspend fun addCrime(crime: Crime)
 
     @Update
     suspend fun updateCrime(crime: Crime)
 
     @Delete
-    suspend fun deleteCrimes(crimes: List<Crime>)
+    suspend fun deleteCrime(crime: Crime)
 
 }

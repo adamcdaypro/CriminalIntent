@@ -53,7 +53,7 @@ class CrimeDetailFragment : Fragment() {
             }
         }
 
-        setFragmentResultListener(DatePickerDialogFragment.DATE_REQUEST_KEY) { requestKey, bundle ->
+        setFragmentResultListener(DatePickerDialogFragment.DATE_REQUEST_KEY) { _, bundle ->
             val date = bundle.getSerializable(DatePickerDialogFragment.DATE_KEY) as Date
             viewModel.setCrimeDate(date)
         }

@@ -11,13 +11,14 @@ import java.util.UUID
 
 class CrimeListAdapter(
     private val crimes: List<Crime>,
-    private val onCrimeClicked: (id: UUID) -> Unit
+    private val onCrimeClicked: (id: UUID) -> Unit,
+    private val onCrimeLongClicked: (id: UUID) -> Boolean
 ) : RecyclerView.Adapter<CrimeListAdapter.CrimeViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CrimeViewHolder {
         val binding =
             ListItemCrimeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return CrimeViewHolder(binding, onCrimeClicked)
+        return CrimeViewHolder(binding, onCrimeClicked, onCrimeLongClicked)
     }
 
     override fun getItemCount() = crimes.size
@@ -28,7 +29,8 @@ class CrimeListAdapter(
 
     class CrimeViewHolder(
         private val binding: ListItemCrimeBinding,
-        private val onCrimeClicked: (id: UUID) -> Unit
+        private val onCrimeClicked: (id: UUID) -> Unit,
+        private val onCrimeLongClicked: (id: UUID) -> Boolean
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(crime: Crime) {
@@ -42,6 +44,8 @@ class CrimeListAdapter(
                 crimeSolvedImageView.visibility = if (crime.isSolved) View.VISIBLE else View.GONE
 
                 root.setOnClickListener { onCrimeClicked(crime.id) }
+
+                root.setOnLongClickListener { onCrimeLongClicked(crime.id) }
             }
         }
     }

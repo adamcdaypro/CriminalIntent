@@ -15,4 +15,8 @@ class CrimeRepository {
 
     suspend fun updateCrime(crime: Crime) = crimeDatabase.crimeDao().updateCrime(crime)
 
+    suspend fun addCrime(crime: Crime) = crimeDatabase.crimeDao().addCrime(crime)
+
+    suspend fun deleteCrime(crime: Crime) = crimeDatabase.crimeDao().deleteCrime(crime)
+
 }
