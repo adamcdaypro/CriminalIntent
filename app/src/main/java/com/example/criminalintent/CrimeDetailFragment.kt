@@ -6,10 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.criminalintent.databinding.FragmentCrimeDetailBinding
 import com.example.criminalintent.model.Crime
@@ -50,6 +52,11 @@ class CrimeDetailFragment : Fragment() {
                 }
             }
         }
+
+        setFragmentResultListener(DatePickerDialogFragment.DATE_REQUEST_KEY) { requestKey, bundle ->
+            val date = bundle.getSerializable(DatePickerDialogFragment.DATE_KEY) as Date
+            viewModel.setCrimeDate(date)
+        }
     }
 
     override fun onDestroy() {
@@ -71,7 +78,8 @@ class CrimeDetailFragment : Fragment() {
 
     private fun setupCrimeDateButton() {
         binding.crimeDateButton.setOnClickListener {
-            viewModel.setCrimeDate(Date())
+            val crimeDate = viewModel.crime.value?.date
+            findNavController().navigate(CrimeDetailFragmentDirections.selectDate(crimeDate))
         }
     }
 
