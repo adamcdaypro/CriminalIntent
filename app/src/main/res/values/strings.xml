@@ -7,4 +7,20 @@
     <string name="solved">Solved</string>
     <string name="this_crime_is_solved">This crime is solved</string>
     <string name="new_crime">New Crime</string>
+
+<!--Crime Report-->
+    <string name="choose_suspect">Choose Suspect</string>
+    <string name="send_crime_report">Send Crime Report</string>
+    <string name="crime_report">
+        %1$s!\n
+        The crime was discovered on %2$s. %3$s, and %4$s\n
+        Please report any additional information!
+    </string>
+    <string name="crime_report_solved">The case is solved</string>
+    <string name="crime_report_unsolved">The case is not solved</string>
+    <string name="crime_report_no_suspect">their is no suspect</string>
+    <string name="crime_report_suspect">the suspect is %s</string>
+    <string name="crime_report_subject">Criminal Intent Crime Report</string>
+    <string name="crime_report_send">Send crime report via</string>
+
 </resources>

@@ -33,21 +33,28 @@ class CrimeDetailViewModel @OptIn(DelicateCoroutinesApi::class) constructor(
         }
     }
 
-    fun setCrimeTitle(title: String) {
+    fun updateCrimeTitle(title: String) {
         _crime.update { it?.copy(title = title) }
     }
 
-    fun setCrimeDate(date: Date) {
+    fun updateCrimeDate(date: Date) {
         _crime.update { it?.copy(date = date) }
     }
 
-    fun setCrimeSolved(isSolved: Boolean) {
+    fun updateCrimeSolved(isSolved: Boolean) {
         _crime.update { it?.copy(isSolved = isSolved) }
+    }
+
+    fun updateSuspect(suspect: String) {
+        _crime.update { it?.copy(suspect = suspect) }
+    }
+
+    fun updatePhotoFileName(photoFileName: String?) {
+        _crime.update { if (photoFileName != null) it?.copy(photoFileName = photoFileName) else it }
     }
 
     override fun onCleared() {
         super.onCleared()
-
         globalCoroutineScope.launch { crime.value?.let { crimeRepository.updateCrime(it) } }
     }
 

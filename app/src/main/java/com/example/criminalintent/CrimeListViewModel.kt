@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Date
 import java.util.UUID
 
 class CrimeListViewModel : ViewModel() {
@@ -26,12 +25,7 @@ class CrimeListViewModel : ViewModel() {
     }
 
     fun addCrime(): UUID {
-        val newCrime = Crime(
-            id = UUID.randomUUID(),
-            title = "",
-            date = Date(),
-            isSolved = false
-        )
+        val newCrime = Crime()
         viewModelScope.launch {
             crimeRepository.addCrime(newCrime)
         }
