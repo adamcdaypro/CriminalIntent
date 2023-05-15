@@ -1,8 +1,11 @@
 package com.example.criminalintent
 
+import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.criminalintent.filemanager.PhotoFileManager
 import com.example.criminalintent.model.Crime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -15,9 +18,12 @@ import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.UUID
 
+const val STATE_NEXT_PHOTO_FILE_NAME = "nextPhotoFileName"
+
 class CrimeDetailViewModel @OptIn(DelicateCoroutinesApi::class) constructor(
     private val id: UUID,
-    private val globalCoroutineScope: CoroutineScope = GlobalScope
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    private val globalCoroutineScope: CoroutineScope = GlobalScope,
 ) : ViewModel() {
 
     private val crimeRepository: CrimeRepository = CrimeRepository()
@@ -25,12 +31,15 @@ class CrimeDetailViewModel @OptIn(DelicateCoroutinesApi::class) constructor(
     private val _crime: MutableStateFlow<Crime?> = MutableStateFlow(null)
     val crime: StateFlow<Crime?> = _crime.asStateFlow()
 
+    private var nextPhotoFileName: String? = null
+
     init {
         viewModelScope.launch {
             crimeRepository.getCrime(id).collect { crime ->
                 _crime.value = crime
             }
         }
+        nextPhotoFileName = savedStateHandle[STATE_NEXT_PHOTO_FILE_NAME]
     }
 
     fun updateCrimeTitle(title: String) {
@@ -49,12 +58,24 @@ class CrimeDetailViewModel @OptIn(DelicateCoroutinesApi::class) constructor(
         _crime.update { it?.copy(suspect = suspect) }
     }
 
-    fun updatePhotoFileName(photoFileName: String?) {
-        _crime.update { if (photoFileName != null) it?.copy(photoFileName = photoFileName) else it }
+    fun setNextPhotoFileName(photoFileName: String) {
+        nextPhotoFileName = photoFileName
+    }
+
+    fun updatePhotoFileName(update: Boolean, context: Context) {
+        if (update) _crime.update {
+            maybeDeleteOldPhoto(context)
+            if (nextPhotoFileName != null) it?.copy(photoFileName = nextPhotoFileName) else it
+        }
+    }
+
+    private fun maybeDeleteOldPhoto(context: Context) {
+        PhotoFileManager.deletePhoto(crime.value?.photoFileName ?: "", context)
     }
 
     override fun onCleared() {
         super.onCleared()
+        savedStateHandle[STATE_NEXT_PHOTO_FILE_NAME] = nextPhotoFileName
         globalCoroutineScope.launch { crime.value?.let { crimeRepository.updateCrime(it) } }
     }
 

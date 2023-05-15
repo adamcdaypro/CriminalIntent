@@ -25,6 +25,9 @@
         <action
             android:id="@+id/selectDate"
             app:destination="@id/datePickerDialogFragment" />
+        <action
+            android:id="@+id/showCrimeScene"
+            app:destination="@id/crimeSceneDialogFragment" />
     </fragment>
     <dialog
         android:id="@+id/datePickerDialogFragment"
@@ -34,5 +37,13 @@
             android:name="date"
             app:argType="java.util.Date"
             app:nullable="true" />
+    </dialog>
+    <dialog
+        android:id="@+id/crimeSceneDialogFragment"
+        android:name="com.example.criminalintent.CrimeSceneDialogFragment"
+        android:label="CrimeSceneDialogFragment" >
+        <argument
+            android:name="photoFileName"
+            app:argType="string" />
     </dialog>
 </navigation>

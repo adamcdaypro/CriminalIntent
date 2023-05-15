@@ -1,26 +1,28 @@
 package com.example.criminalintent
 
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
-import android.provider.ContactsContract
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.FileProvider
-import androidx.core.widget.doAfterTextChanged
+import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
+import androidx.navigation.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.criminalintent.databinding.FragmentCrimeDetailBinding
+import com.example.criminalintent.filemanager.PhotoFileManager
 import com.example.criminalintent.model.Crime
+import com.example.criminalintent.utility.ContactsUtility
+import com.example.criminalintent.utility.CrimeReportUtility
+import com.example.criminalintent.utility.IntentResolverUtility
+import com.example.criminalintent.utility.PhotoUtility
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.DateFormat
@@ -40,12 +42,13 @@ class CrimeDetailFragment : Fragment() {
     }
 
     private val selectSuspect = registerForActivityResult(ActivityResultContracts.PickContact()) {
-        val suspect = getSuspectFromContacts(it)
+        val suspect = ContactsUtility.getSuspectFromContacts(it, requireContext())
         viewModel.updateSuspect(suspect)
+        updateViews()
     }
 
     private val takePhoto = registerForActivityResult(ActivityResultContracts.TakePicture()) {
-        if (it == false) viewModel.updatePhotoFileName(null)
+        viewModel.updatePhotoFileName(it, requireContext())
     }
 
     override fun onCreateView(
@@ -59,11 +62,11 @@ class CrimeDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        updateViews(null)
+        updateViews()
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 with(viewModel) {
-                    crime.collect { crime -> updateViews(crime) }
+                    crime.collect { updateViews() }
                 }
             }
         }
@@ -74,148 +77,126 @@ class CrimeDetailFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        updateViews()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
     }
 
-    private fun updateViews(crime: Crime?) {
+    private fun updateViews() {
+        val crime = viewModel.crime.value
         if (crime == null) {
             binding.content.visibility = View.GONE
             binding.loadingProgressBar.visibility = View.VISIBLE
         } else {
             binding.content.visibility = View.VISIBLE
             binding.loadingProgressBar.visibility = View.GONE
-            updateTitleTextView(crime)
-            updateCrimeDateButton(crime)
-            updateCrimeSolvedCheckBox(crime)
+            updateTitleTextView(crime.title)
+            updateCrimeDateButton(crime.date)
+            updateCrimeSolvedCheckBox(crime.isSolved)
             updateSendCrimeReportButton(crime)
-            updateChoseSuspectButton(crime)
-            updatePhotoImageView()
+            updateChoseSuspectButton(crime.suspect)
+            updatePhotoImageView(crime.photoFileName)
             updateCameraImageButton()
         }
     }
 
-    private fun updateTitleTextView(crime: Crime) {
+    private fun updateTitleTextView(title: String) {
         binding.crimeTitle.apply {
-            setText(crime.title)
-            doAfterTextChanged { viewModel.updateCrimeTitle(it.toString()) }
-        }
-    }
-
-    private fun updateCrimeDateButton(crime: Crime) {
-        binding.crimeDateButton.apply {
-            text =
-                DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.SHORT).format(crime.date)
-            binding.crimeDateButton.setOnClickListener {
-                findNavController().navigate(CrimeDetailFragmentDirections.selectDate(crime.date))
+            val currentText = this.text.toString()
+            if (currentText.isEmpty()) {
+                setText(title)
+            } else if (currentText != title) {
+                setText(currentText)
+                viewModel.updateCrimeTitle(currentText)
             }
         }
     }
 
-    private fun updateCrimeSolvedCheckBox(crime: Crime) {
+    private fun updateCrimeDateButton(date: Date) {
+        binding.crimeDateButton.apply {
+            text =
+                DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.SHORT).format(date)
+            binding.crimeDateButton.setOnClickListener {
+                findNavController().navigate(CrimeDetailFragmentDirections.selectDate(date))
+            }
+        }
+    }
+
+    private fun updateCrimeSolvedCheckBox(isSolved: Boolean) {
         binding.crimeSolvedCheckBox.apply {
-            isChecked = crime.isSolved
+            isChecked = isSolved
             setOnCheckedChangeListener { _, isChecked -> viewModel.updateCrimeSolved(isChecked) }
         }
     }
 
     private fun updateSendCrimeReportButton(crime: Crime) {
         binding.sendCrimeReportButton.apply {
-            val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain" }
-            isEnabled = (canResolveIntent(intent))
+            isEnabled = IntentResolverUtility.actionSendEnabled(requireContext())
 
             setOnClickListener {
-                val crimeReport = getCrimeReport(crime)
-                val crimeReportSubject = getString(R.string.crime_report_subject)
-                intent.putExtra(Intent.EXTRA_SUBJECT, crimeReportSubject)
-                intent.putExtra(Intent.EXTRA_TEXT, crimeReport)
-
-                val chooserIntent =
-                    Intent.createChooser(intent, getString(R.string.crime_report_subject))
+                val crimeReport = CrimeReportUtility.getCrimeReport(crime, context)
+                val chooserIntent = getCrimeReportChooserIntent(crimeReport)
                 startActivity(chooserIntent)
             }
         }
     }
 
-    private fun updateChoseSuspectButton(crime: Crime) {
-        binding.chooseSuspectButton.apply {
-            val testIntent = selectSuspect.contract.createIntent(requireContext(), null)
-            isEnabled = canResolveIntent(testIntent)
+    private fun getCrimeReportChooserIntent(crimeReport: String): Intent {
+        val crimeReportSubject = getString(R.string.crime_report_subject)
+        val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain" }
+        intent.putExtra(Intent.EXTRA_SUBJECT, crimeReportSubject)
+        intent.putExtra(Intent.EXTRA_TEXT, crimeReport)
+        return Intent.createChooser(intent, getString(R.string.crime_report_subject))
+    }
 
-            if (crime.suspect.isNotBlank()) {
-                text = crime.suspect
-            }
+    private fun updateChoseSuspectButton(suspect: String) {
+        binding.chooseSuspectButton.apply {
+            isEnabled = IntentResolverUtility.pickContactEnabled(requireContext())
+
+            text = suspect
             setOnClickListener { selectSuspect.launch(null) }
         }
     }
 
-    private fun updatePhotoImageView() {
+    private fun updatePhotoImageView(photoFileName: String?) {
+        if (photoFileName == null) return
 
-    }
-
-    private fun updateCameraImageButton() {
-        binding.cameraImageButton.apply{
-            val testIntent = takePhoto.contract.createIntent(requireContext(), Uri.parse(""))
-            isEnabled = canResolveIntent(testIntent)
+        binding.crimeImageView.apply {
+            doOnLayout {
+                val photoFile = File(requireContext().applicationContext.filesDir, photoFileName)
+                val bitmap = PhotoUtility.getScaledBitmap(
+                    path = photoFile.path,
+                    destinationWidth = measuredWidth,
+                    destinationHeight = measuredHeight
+                )
+                setImageBitmap(bitmap)
+            }
 
             setOnClickListener {
-                val photoName = "IMG_${Date()}.JPG"
-                val photoFile = File(requireContext().applicationContext.filesDir, photoName)
-                val photoUri = FileProvider.getUriForFile(
-                    requireContext(),
-                    "com.example.criminalintent.fileProvider",
-                    photoFile
+                findNavController().navigate(
+                    CrimeDetailFragmentDirections.showCrimeScene(
+                        photoFileName
+                    )
                 )
-                viewModel.updatePhotoFileName(photoName)
-                takePhoto.launch(photoUri)
             }
         }
     }
 
-    private fun getCrimeReport(crime: Crime): String {
-        val solvedString = when (crime.isSolved) {
-            true -> getString(R.string.crime_report_solved)
-            false -> getString(R.string.crime_report_unsolved)
-        }
-        val dateString =
-            DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.SHORT).format(crime.date)
-        val suspectString = when (crime.suspect) {
-            "" -> getString(R.string.crime_report_no_suspect)
-            else -> getString(R.string.crime_report_suspect, crime.suspect)
-        }
-        return getString(
-            R.string.crime_report,
-            crime.title,
-            dateString,
-            solvedString,
-            suspectString
-        )
-    }
+    private fun updateCameraImageButton() {
+        binding.cameraImageButton.apply {
+            isEnabled = IntentResolverUtility.takePictureEnabled(requireContext())
 
-    private fun getSuspectFromContacts(uri: Uri?): String {
-        if (uri == null) return ""
-
-        val queryFields = arrayOf(ContactsContract.Contacts.DISPLAY_NAME)
-        val queryCursor = requireActivity().contentResolver.query(
-            uri,
-            queryFields,
-            null,
-            null,
-            null
-        )
-        val suspect = queryCursor?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else ""
+            setOnClickListener {
+                val photoFile = PhotoFileManager.createPhotoFile(requireContext())
+                val photoUri = PhotoFileManager.createPhotoUri(photoFile, requireContext())
+                viewModel.setNextPhotoFileName(photoFile.name)
+                takePhoto.launch(photoUri)
+            }
         }
-        return suspect ?: ""
-    }
-
-    private fun canResolveIntent(intent: Intent): Boolean {
-        val packageManager = requireActivity().packageManager
-        val resolvedActivity = packageManager.resolveActivity(
-            intent,
-            PackageManager.MATCH_DEFAULT_ONLY
-        )
-        return resolvedActivity != null
     }
 }
